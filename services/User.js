@@ -1,6 +1,6 @@
 const io = require('../socket.js').getio()
 const _ = require('lodash')
-const LOG = true
+const LOG = false
 
 // socket events
 io.on('connection', (socket) => {
@@ -9,7 +9,7 @@ io.on('connection', (socket) => {
 
 // actions
 function setUser(user, socket) {
-  log('set-user')
+  log('set-user', user.userid)
   socket.userid = user.userid
   socket.username = user.username
 }
