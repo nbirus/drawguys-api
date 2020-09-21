@@ -4,8 +4,8 @@ const LOG = true
 
 let rooms = {}
 let defaultRoom = {
-  roomname: '',
   roomid: '',
+  roomname: '',
   active: false,
   users: {},
   sockets: [],
@@ -25,6 +25,7 @@ io.on('connection', (socket) => {
   socket.on('create_room', (room) => createRoom(room, socket))
   socket.on('join_room', (roomid) => joinRoom(roomid, socket))
   socket.on('leave_room', (roomid) => leaveRoom(roomid, socket))
+  socket.on('toggle_ready', (userid) => toggleReady(userid, socket))
 
   socket.on('disconnecting', () => {
     if (socket.roomid) {
@@ -98,7 +99,7 @@ function joinRoom(roomid, socket) {
     }
 
     brodcastRooms()
-    brodcastRoom(room)
+    updateRoom(room)
   })
 }
 function leaveRoom(roomid, socket) {
@@ -130,9 +131,26 @@ function leaveRoom(roomid, socket) {
       removeRoom(roomid)
     } else {
       brodcastRooms()
-      brodcastRoom(room)
+      updateRoom(room)
     }
   })
+}
+function toggleReady(userid, socket) {
+  log('toggle-ready', userid)
+
+  let room = rooms[socket.roomid]
+
+  // validation
+  if (!socket || !room || !room.users[userid]) {
+    log('toggle-ready:error', roomid)
+    return
+  }
+
+  // toggle ready
+  room.users[userid].ready = !room.users[userid].ready
+
+  // update
+  updateRoom(room)
 }
 
 // broadcasts
@@ -140,7 +158,7 @@ function brodcastRooms() {
   // log('broadcast-rooms')
   io.emit('update_rooms', formatRooms(rooms))
 }
-function brodcastRoom(room) {
+function updateRoom(room) {
   // log('broadcast-room-update', room.roomid)
   for (const client of room.sockets) {
     client.emit('update_room', formatRoom(room))
