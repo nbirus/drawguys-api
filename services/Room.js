@@ -3,7 +3,116 @@ const _ = require('lodash')
 const getColor = require('../assets/colors').default
 const LOG = true
 
-let rooms = {}
+let rooms = {
+  // test: {
+  //   roomid: 'test',
+  //   roomname: 'test',
+  //   active: false,
+  //   users: {
+  //     test: {
+  //       guesses: [],
+  //       ready: false,
+  //       match: false,
+  //       typing: false,
+  //       color: 'blue',
+  //       score: 0,
+  //       username: 'Usernmae',
+  //     },
+  //     test2: {
+  //       guesses: [],
+  //       ready: false,
+  //       match: false,
+  //       typing: false,
+  //       color: 'maroon',
+  //       score: 0,
+  //       username: 'Other',
+  //     },
+  //   },
+  //   sockets: [],
+  //   messages: [],
+  // },
+  // test2: {
+  //   roomid: 'test',
+  //   roomname: 'Room Name',
+  //   active: false,
+  //   users: {
+  //     test: {
+  //       guesses: [],
+  //       ready: false,
+  //       match: false,
+  //       typing: false,
+  //       color: 'orange',
+  //       score: 0,
+  //       username: 'Test',
+  //     },
+  //   },
+  //   sockets: [],
+  //   messages: [],
+  // },
+  // test3: {
+  //   roomid: 'test',
+  //   roomname: 'Room Three',
+  //   active: false,
+  //   users: {
+  //     test: {
+  //       guesses: [],
+  //       ready: false,
+  //       match: false,
+  //       typing: false,
+  //       color: 'purple',
+  //       score: 0,
+  //       username: 'Lorium',
+  //     },
+  //     test2: {
+  //       guesses: [],
+  //       ready: false,
+  //       match: false,
+  //       typing: false,
+  //       color: 'green',
+  //       score: 0,
+  //       username: 'Other',
+  //     },
+  //     test2: {
+  //       guesses: [],
+  //       ready: false,
+  //       match: false,
+  //       typing: false,
+  //       color: 'red',
+  //       score: 0,
+  //       username: 'Other',
+  //     },
+  //   },
+  //   sockets: [],
+  //   messages: [],
+  // },
+  // test4: {
+  //   roomid: 'test',
+  //   roomname: 'test',
+  //   active: false,
+  //   users: {
+  //     test: {
+  //       guesses: [],
+  //       ready: false,
+  //       match: false,
+  //       typing: false,
+  //       color: 'blue',
+  //       score: 0,
+  //       username: 'Usernmae',
+  //     },
+  //     test2: {
+  //       guesses: [],
+  //       ready: false,
+  //       match: false,
+  //       typing: false,
+  //       color: 'maroon',
+  //       score: 0,
+  //       username: 'Other',
+  //     },
+  //   },
+  //   sockets: [],
+  //   messages: [],
+  // },
+}
 let defaultRoom = {
   roomid: '',
   roomname: '',
