@@ -28,12 +28,12 @@ io.on('connection', (socket) => {
   socket.on('join_room', (roomid) => joinRoom(roomid, socket))
   socket.on('leave_room', (roomid) => leaveRoom(roomid, socket))
   socket.on('toggle_ready', (userid) => toggleReady(userid, socket))
+  socket.on('message', (message) => addMessage(message, socket))
   socket.on('disconnecting', () => {
     if (socket.roomid) {
       leaveRoom(socket.roomid, socket)
     }
   })
-
 })
 
 // actions
@@ -152,6 +152,24 @@ function toggleReady(userid, socket) {
   room.users[userid].ready = !room.users[userid].ready
 
   // update
+  brodcastRooms()
+  updateRoom(room)
+}
+function addMessage(message, socket) {
+  log('message', message)
+
+  let room = rooms[roomid]
+
+  // validation
+  if (!socket || !room) {
+    log('message:error', message)
+    return
+  }
+
+  // add message
+  room.messages.push(message)
+
+  // update
   updateRoom(room)
 }
 
@@ -178,7 +196,6 @@ function formatRooms() {
   roomids.forEach((roomid) => {
     returnRooms[roomid] = formatRoom(_.cloneDeep(rooms[roomid]))
   })
-
 
   return returnRooms
 }
