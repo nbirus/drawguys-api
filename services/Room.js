@@ -1,5 +1,6 @@
 const io = require('../socket.js').getio()
 const _ = require('lodash')
+const getColor = require('../assets/colors').default
 const LOG = true
 
 let rooms = {}
@@ -22,22 +23,23 @@ let defaultRoomUser = {
 
 // socket events
 io.on('connection', (socket) => {
+  socket.on('get_rooms', () => getRooms(socket))
   socket.on('create_room', (room) => createRoom(room, socket))
   socket.on('join_room', (roomid) => joinRoom(roomid, socket))
   socket.on('leave_room', (roomid) => leaveRoom(roomid, socket))
   socket.on('toggle_ready', (userid) => toggleReady(userid, socket))
-
   socket.on('disconnecting', () => {
     if (socket.roomid) {
       leaveRoom(socket.roomid, socket)
     }
   })
 
-  // init rooms
-  setTimeout(() => brodcastRooms, 50)
 })
 
 // actions
+function getRooms(socket) {
+  socket.emit('update_rooms', formatRooms(rooms))
+}
 function createRoom(room, socket) {
   log('create-room', room.roomid)
 
@@ -76,7 +78,7 @@ function joinRoom(roomid, socket) {
   let room = rooms[roomid]
 
   // validation
-  if (!socket || !room) {
+  if (!socket || !room || Object.keys(room.users).length === 8) {
     log('join-room:error', socket.userid)
     socket.emit('join_room_error')
     return
@@ -95,7 +97,7 @@ function joinRoom(roomid, socket) {
       ..._.cloneDeep(defaultRoomUser),
       username: socket.username,
       userid: socket.userid,
-      color: 'blue', // TODO
+      color: getColor(room.users),
     }
 
     brodcastRooms()
@@ -155,11 +157,9 @@ function toggleReady(userid, socket) {
 
 // broadcasts
 function brodcastRooms() {
-  // log('broadcast-rooms')
   io.emit('update_rooms', formatRooms(rooms))
 }
 function updateRoom(room) {
-  // log('broadcast-room-update', room.roomid)
   for (const client of room.sockets) {
     client.emit('update_room', formatRoom(room))
   }
@@ -178,6 +178,7 @@ function formatRooms() {
   roomids.forEach((roomid) => {
     returnRooms[roomid] = formatRoom(_.cloneDeep(rooms[roomid]))
   })
+
 
   return returnRooms
 }
