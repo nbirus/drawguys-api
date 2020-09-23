@@ -197,6 +197,7 @@ function joinRoom(roomid, socket) {
   socket.join(roomid, () => {
     // set socket roomid
     socket.roomid = roomid
+    socket.color = getColor(room.users)
 
     // add socket to room
     room.sockets.push(socket)
@@ -206,7 +207,7 @@ function joinRoom(roomid, socket) {
       ..._.cloneDeep(defaultRoomUser),
       username: socket.username,
       userid: socket.userid,
-      color: getColor(room.users),
+      color: socket.color,
     }
 
     brodcastRooms()
@@ -267,7 +268,7 @@ function toggleReady(userid, socket) {
 function addMessage(message, socket) {
   log('message', message)
 
-  let room = rooms[roomid]
+  let room = rooms[socket.roomid]
 
   // validation
   if (!socket || !room) {
@@ -276,7 +277,12 @@ function addMessage(message, socket) {
   }
 
   // add message
-  room.messages.push(message)
+  room.messages.push({
+    username: socket.username,
+    usernameid: socket.id,
+    color: socket.color,
+    message,
+  })
 
   // update
   updateRoom(room)
