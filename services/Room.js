@@ -267,7 +267,7 @@ function toggleReady(userid, socket) {
 function addMessage(message, socket) {
   log('message', message)
 
-  let room = rooms[roomid]
+  let room = rooms[socket.roomid]
 
   // validation
   if (!socket || !room) {
