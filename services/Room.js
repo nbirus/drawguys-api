@@ -210,6 +210,7 @@ function joinRoom(roomid, socket) {
       color: socket.color,
     }
 
+    addMessage('', socket, 'join-room')
     brodcastRooms()
     updateRoom(room)
   })
@@ -224,6 +225,8 @@ function leaveRoom(roomid, socket) {
     log('leave-room:error', roomid)
     return
   }
+
+  addMessage('', socket, 'leave-room')
 
   socket.leave(roomid, () => {
     // reset roomid on socket
@@ -265,7 +268,7 @@ function toggleReady(userid, socket) {
   brodcastRooms()
   updateRoom(room)
 }
-function addMessage(message, socket) {
+function addMessage(message, socket, event = 'message') {
   log('message', message)
 
   let room = rooms[socket.roomid]
@@ -282,6 +285,7 @@ function addMessage(message, socket) {
     usernameid: socket.id,
     color: socket.color,
     message,
+    event,
   })
 
   // update
