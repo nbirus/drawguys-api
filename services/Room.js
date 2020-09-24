@@ -268,7 +268,7 @@ function toggleReady(userid, socket) {
   brodcastRooms()
   updateRoom(room)
 }
-function addMessage(message, socket, event = 'message') {
+function addMessage(message, socket, event) {
   log('message', message)
 
   let room = rooms[socket.roomid]
@@ -282,7 +282,7 @@ function addMessage(message, socket, event = 'message') {
   // add message
   room.messages.push({
     username: socket.username,
-    usernameid: socket.id,
+    userid: socket.userid,
     color: socket.color,
     message,
     event,
