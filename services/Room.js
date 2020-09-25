@@ -257,7 +257,7 @@ function toggleReady(userid, socket) {
 
   // validation
   if (!socket || !room || !room.users[userid]) {
-    log('toggle-ready:error', roomid)
+    log('toggle-ready:error', socket.roomid)
     return
   }
 
@@ -265,6 +265,16 @@ function toggleReady(userid, socket) {
   room.users[userid].ready = !room.users[userid].ready
 
   // update
+  // if (!room.users[userid].ready) {
+  //   let index = room.messages.findIndex(message => message.userid === socket.userid && message.event === 'ready')
+  //   if (index !== -1)  {
+  //     delete room.messages[index]
+  //   }
+  // }
+  // else {
+  //   addMessage('', socket, 'ready')
+  // }
+
   brodcastRooms()
   updateRoom(room)
 }
@@ -283,7 +293,6 @@ function addMessage(message, socket, event) {
   room.messages.push({
     username: socket.username,
     userid: socket.userid,
-    color: socket.color,
     message,
     event,
   })
