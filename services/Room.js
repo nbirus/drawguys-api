@@ -138,6 +138,8 @@ io.on('connection', (socket) => {
   socket.on('leave_room', (roomid) => leaveRoom(roomid, socket))
   socket.on('toggle_ready', (userid) => toggleReady(userid, socket))
   socket.on('message', (message) => addMessage(message, socket))
+  socket.on('color', (color) => setColor(color, socket))
+  socket.on('typing', (typing) => setTyping(typing, socket))
   socket.on('disconnecting', () => {
     if (socket.roomid) {
       leaveRoom(socket.roomid, socket)
@@ -264,16 +266,12 @@ function toggleReady(userid, socket) {
   // toggle ready
   room.users[userid].ready = !room.users[userid].ready
 
-  // update
-  // if (!room.users[userid].ready) {
-  //   let index = room.messages.findIndex(message => message.userid === socket.userid && message.event === 'ready')
-  //   if (index !== -1)  {
-  //     delete room.messages[index]
-  //   }
-  // }
-  // else {
-  //   addMessage('', socket, 'ready')
-  // }
+  let userArray = Object.values(room.users)
+  if (userArray.length > 1 && userArray.every((user) => user.ready)) {
+    startGameCountdown(socket)
+  } else {
+    stopGameCountdown(socket)
+  }
 
   brodcastRooms()
   updateRoom(room)
@@ -299,6 +297,56 @@ function addMessage(message, socket, event) {
 
   // update
   updateRoom(room)
+}
+function setColor(color, socket) {
+  let room = rooms[socket.roomid]
+  // validation
+  if (!socket || !room || !room.users[socket.userid]) {
+    log('set-color:error', socket.userid)
+    return
+  }
+
+  room.users[socket.userid].color = color
+
+  brodcastRooms()
+  updateRoom(room)
+}
+function setTyping(typing, socket) {
+  let room = rooms[socket.roomid]
+  // validation
+  if (!socket || !room || !room.users[socket.userid]) {
+    log('set-typing:error', socket.userid)
+    return
+  }
+
+  room.users[socket.userid].typing = typing
+
+  updateRoom(room)
+}
+
+let countdownInterval = null
+function startGameCountdown(socket) {
+  let count = 3
+  countDown()
+  countdownInterval = setInterval(countDown, 1000)
+
+  function countDown() {
+    addMessage(count, socket, 'countdown')
+    if (count === 0) {
+      console.log('START')
+      clearInterval(countdownInterval)
+      countdownInterval = null
+      // game.startGame(room)
+    }
+    count--
+  }
+}
+function stopGameCountdown(socket) {
+  if (countdownInterval) {
+    addMessage('', socket, 'countdown-cancel')
+    clearInterval(countdownInterval)
+    countdownInterval = null
+  }
 }
 
 // broadcasts
