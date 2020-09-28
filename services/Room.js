@@ -323,20 +323,35 @@ function setTyping(typing, socket) {
 
   updateRoom(room)
 }
+function startGame(socket) {
+  log('start')
+
+  let room = rooms[socket.roomid]
+
+  // validation
+  if (!socket || !room || !room.users[userid]) {
+    log('start:error', socket.roomid)
+    return
+  }
+
+  // set game to active
+  room.active = true
+
+  updateRoom(room)
+  brodcastRooms()
+}
 
 let countdownInterval = null
 function startGameCountdown(socket) {
   let count = 3
-  countDown()
   countdownInterval = setInterval(countDown, 1000)
 
   function countDown() {
     addMessage(count, socket, 'countdown')
     if (count === 0) {
-      console.log('START')
       clearInterval(countdownInterval)
       countdownInterval = null
-      // game.startGame(room)
+      startGame(socket)
     }
     count--
   }
