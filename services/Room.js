@@ -1,6 +1,6 @@
 const io = require('../socket.js').getio()
 const _ = require('lodash')
-const getColor = require('../assets/colors').default
+const getColor = require('../assets/colors')
 const LOG = true
 
 let rooms = {
