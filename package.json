@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Draw with Friends API",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.15.2",
     "lodash": "^4.17.20",
     "socket.io": "^1.7.3",
