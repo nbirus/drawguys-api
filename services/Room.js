@@ -117,6 +117,8 @@ let defaultRoom = {
   roomid: '',
   roomname: '',
   active: false,
+  countdownActive: false,
+  countdown: 3,
   users: {},
   sockets: [],
   messages: [],
@@ -269,8 +271,10 @@ function toggleReady(userid, socket) {
   let userArray = Object.values(room.users)
   if (userArray.length > 1 && userArray.every((user) => user.ready)) {
     startGameCountdown(socket)
+    room.countdownActive = true
   } else {
     stopGameCountdown(socket)
+    room.countdownActive = false
   }
 
   brodcastRooms()
@@ -331,9 +335,9 @@ function startGameCountdown(socket) {
   countdownInterval = setInterval(countDown, 1000)
 
   function countDown() {
+    rooms[socket.roomid].countdown = count
     addMessage(count, socket, 'countdown')
     if (count === 0) {
-      console.log('START')
       clearInterval(countdownInterval)
       countdownInterval = null
       // game.startGame(room)
