@@ -1,6 +1,7 @@
 const io = require('../socket.js').getio()
 const _ = require('lodash')
 const getColor = require('../assets/colors')
+const game = require('./Game')
 const LOG = true
 
 let rooms = {
@@ -114,6 +115,7 @@ let rooms = {
   // },
 }
 let defaultRoom = {
+  game: game,
   roomid: '',
   roomname: '',
   active: false,
@@ -333,21 +335,20 @@ function startGame(socket) {
   let room = rooms[socket.roomid]
 
   // validation
-  if (!socket || !room || !room.users[userid]) {
+  if (!socket || !room) {
     log('start:error', socket.roomid)
     return
   }
-
-  // set game to active
   room.active = true
+  room.game(room)
 
-  updateRoom(room)
   brodcastRooms()
+  updateRoom(room)
 }
 
 let countdownInterval = null
 function startGameCountdown(socket) {
-  let count = 3
+  let count = 1
   countdownInterval = setInterval(countDown, 1000)
 
   function countDown() {
