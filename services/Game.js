@@ -4,6 +4,7 @@ const words = require('../assets/words.js')
 const LOG = true
 
 const defaultGameState = {
+  event: 'pre_round',
   timer: 0,
   turnIndex: 1,
   turnUser: {},
@@ -18,6 +19,7 @@ const game = function (room, endGame) {
   // init game state
   room.gameState = _.cloneDeep(defaultGameState)
   room.gameState.numberOfTurns = Object.keys(room.users).length
+  room.gameState.turnUser = getUserAtIndex(room.gameState.turnIndex, room)
 
   // brodcast start
   broadcastGameState()
@@ -36,14 +38,10 @@ const game = function (room, endGame) {
       room.users[userid].guesses = []
     })
 
-    // update room
-    broadcastRoomUpdate(room)
+    room.gameState.event = 'pre_round'
 
-    // broadcast loop start
-    broadcastEvent({
-      event: 'pre_round',
-      ...room.gameState,
-    })
+    // update room
+    broadcastGameState()
 
     // wait 3 seconds before starting next round
     startTimer(3, startRound)
@@ -51,23 +49,23 @@ const game = function (room, endGame) {
 
   // actions
   function startRound() {
-    broadcastEvent({
-      event: 'round_start',
-    })
+    room.gameState.event = 'round_start'
+    broadcastGameState()
 
     // start round timer
     startTimer(room.gameState.roundTimer, endRound)
   }
   function endRound() {
-    broadcastEvent({
-      event: 'round_end',
-    })
-
+    room.gameState.event = 'round_end'
+    
     // move round count down, next user turn
     room.gameState.round++
 
     // update turn
     incrementTurnIndex()
+
+    // update game
+    broadcastGameState()
 
     // check to see if game is over
     if (room.gameState.round > room.gameState.numberOfRounds) {
@@ -82,6 +80,10 @@ const game = function (room, endGame) {
       data.guess &&
       data.guess.toUpperCase() === room.gameState.roundWord.toUpperCase()
     cb(roundWordMatch)
+  }
+  function endGame() {
+    log('end')
+    clearTimer()
   }
 
   // helpers
@@ -99,7 +101,7 @@ const game = function (room, endGame) {
       clearTimer()
       cb()
     } else {
-      broadcastTimer()
+      broadcastGameState()
       room.gameState.timer--
     }
   }
@@ -122,29 +124,9 @@ const game = function (room, endGame) {
   }
 
   // broadcasts
-  function broadcastTimer() {
-    for (const client of room.sockets) {
-      client.emit('update_game_timer', room.gameState.timer)
-    }
-  }
   function broadcastGameState() {
-    log('broadcast-game-state')
     for (const client of room.sockets) {
-      console.log(room.gameState)
-
       client.emit('update_game_state', room.gameState)
-    }
-  }
-  function broadcastEvent(event) {
-    log('broadcast-event', event.event)
-    for (const client of room.sockets) {
-      client.emit('update_game_event', event)
-    }
-  }
-  function broadcastRoomUpdate(room) {
-    log('broadcast-room-update', room.roomid)
-    for (const client of room.sockets) {
-      client.emit('update_room', formatRoom(room))
     }
   }
 
@@ -154,6 +136,7 @@ const game = function (room, endGame) {
   // expose functions
   return {
     guess,
+    endGame,
   }
 }
 
@@ -168,13 +151,6 @@ function log(message, roomid, userid) {
       console.log(`game:${message}`, roomid)
     }
   }
-}
-function formatRoom(room) {
-  return _.cloneDeep({
-    ...room,
-    game: null,
-    sockets: [],
-  })
 }
 function getUserAtIndex(index, room) {
   let userid = Object.keys(room.users)[index - 1]
