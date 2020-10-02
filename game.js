@@ -2,18 +2,27 @@ const io = require('./socket.js').getio()
 const Countdown = require('./countdown.js')
 const LOG = true
 const _ = require('lodash')
+const Room = require('./services/Room')
 
 // timers
-const roundWaitTime = 3
-const preTurnWaitTime = 15
-const turnWaitTime = 15
+const startRoundWaitTime = 3
+const endRoundWaitTime = 3
+const preTurnWaitTime = 3
+const endTurnWaitTime = 3
+const turnWaitTime = 3
 
-function Game(_room) {
+function Game(_room, updateRooms) {
   let room = _room
+  let turnIndex = 0
 
   this.start = function () {
     log('start')
     roundStart()
+
+    // reset ready flag
+    Object.values(room.usersState).forEach((user) => {
+      setUsersState(user.userid, 'ready', false)
+    })
   }
   this.stop = function () {
     log('stop')
@@ -24,18 +33,39 @@ function Game(_room) {
 
   // round
   function roundStart() {
-    setGameState('event', 'round_start', true)
+    // stop game if at limit
+    if (getGameState('round') >= getGameState('numberOfRounds')) {
+      setGameState('event', 'game_end')
+      return
+    }
 
-    // start timer, on coplete start pre turn
+    // increment round count
+    setGameState('event', 'round_start')
+    setGameState('round', getGameState('round') + 1, true)
+
+    // start timer, on complete start pre turn
     startTimer({
-      seconds: roundWaitTime,
-      end: turnStart,
+      seconds: startRoundWaitTime,
+      end: preTurnStart,
     })
   }
   function roundEnd() {
+    Object.values(room.usersState).forEach((user) => {
+      setUsersState(user.userid, 'drawing', false)
+    })
     setGameState('event', 'round_end')
+    startTimer({
+      seconds: endRoundWaitTime,
+      end: roundStart,
+    })
   }
   function preTurnStart() {
+    // if every user had taken a turn, end the round
+    if (!setTurnUser()) {
+      roundEnd()
+      return
+    }
+
     setGameState('event', 'pre_turn')
 
     // user is selecting a word, start turn after
@@ -47,7 +77,7 @@ function Game(_room) {
   function turnStart() {
     setGameState('event', 'turn_start')
 
-    // start turn
+    // user is drawing
     startTimer({
       seconds: turnWaitTime,
       end: turnEnd,
@@ -55,9 +85,42 @@ function Game(_room) {
   }
   function turnEnd() {
     setGameState('event', 'turn_end')
+
+    startTimer({
+      seconds: endTurnWaitTime,
+      end: preTurnStart,
+    })
   }
 
   // helpers
+  function setTurnUser() {
+    let users = Object.values(room.usersState)
+    if (turnIndex === users.length) {
+      turnIndex = 0
+      return false
+    }
+
+    // get user
+    let turnUser = users[turnIndex]
+
+    if (turnUser) {
+      // set drawing
+      users.forEach((user) => {
+        setUsersState(user.userid, 'drawing', turnUser.userid === user.userid)
+      })
+
+      // set turn user
+      setGameState(
+        'turnUser',
+        _.get(room),
+        `usersState.${turnUser.userid}`,
+        true
+      )
+    }
+
+    turnIndex++
+    return true
+  }
   function startTimer(options) {
     room.gameState.gameTimer = new Countdown({
       ...options,
@@ -66,11 +129,17 @@ function Game(_room) {
     room.gameState.gameTimer.start()
   }
   function setGameState(path, value, shouldUpdate = false) {
-    log('set', path, value)
     _.set(room, `gameState.${path}`, value)
     if (shouldUpdate) {
       updateRoomState()
     }
+  }
+  function getGameState(path) {
+    return _.get(room, `gameState.${path}`)
+  }
+  function setUsersState(userid, path, value, shouldUpdate = false) {
+    _.set(room, `usersState.${userid}.${path}`, value)
+    updateRooms()
   }
   function updateRoomState() {
     for (const client of room.sockets) {

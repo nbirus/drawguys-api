@@ -19,14 +19,11 @@ let defaultRoom = {
     active: false,
     event: 'pre_round',
     timer: 0,
-    timerActive: false,
     gameTimer: null,
     turnUser: {},
-    round: 1,
     roundWord: '',
+    round: 0,
     numberOfRounds: 5,
-    numberOfTurns: 4,
-    roundTimer: 10,
   },
   usersState: {},
 }
@@ -272,7 +269,7 @@ function onSocketError(socket, message) {
 
 // game
 function startGame(room) {
-  room.game = new Game(room)
+  room.game = new Game(room, updateRooms)
   room.game.start()
 }
 function stopGame(room) {
@@ -357,4 +354,5 @@ function formatRoom(room) {
 
 module.exports = {
   joinRoom,
+  updateRooms,
 }
