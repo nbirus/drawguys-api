@@ -57,6 +57,7 @@ const game = function (room, endGame) {
   }
   function endRound() {
     room.gameState.event = 'round_end'
+
     
     // move round count down, next user turn
     room.gameState.round++

@@ -348,16 +348,19 @@ function startGame(socket) {
 
 let countdownInterval = null
 function startGameCountdown(socket) {
-  let count = 1
-  countdownInterval = setInterval(countDown, 1000)
+  let count = 3
+  countDown()
+  countdownInterval = setInterval(countDown, 1250)
 
   function countDown() {
     rooms[socket.roomid].countdown = count
+
     addMessage(count, socket, 'countdown')
     if (count === 0) {
       clearInterval(countdownInterval)
       countdownInterval = null
       startGame(socket)
+      // startGameCountdown(socket)
     }
     count--
   }
