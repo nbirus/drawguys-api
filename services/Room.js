@@ -1,13 +1,13 @@
 const io = require('../socket.js').getio()
 const _ = require('lodash')
 const getColor = require('../assets/colors')
-const game = require('./Game')
+const Game = require('../game.js')
 const Countdown = require('../countdown.js')
 const LOG = true
 
 let rooms = {}
 let defaultRoom = {
-  game: game,
+  game: null,
   roomid: '',
   roomname: '',
   sockets: [],
@@ -19,7 +19,8 @@ let defaultRoom = {
     active: false,
     event: 'pre_round',
     timer: 0,
-    turnIndex: 1,
+    timerActive: false,
+    gameTimer: null,
     turnUser: {},
     round: 1,
     roundWord: '',
@@ -50,7 +51,7 @@ io.on('connection', (socket) => {
   socket.on('message', (message) => roomMessage(message, socket))
   socket.on('color', (color) => setColor(color, socket))
   socket.on('typing', (typing) => setTyping(typing, socket))
-  socket.on('disconnecting', () => leaveRoom(socket.roomid, socket))
+  socket.on('disconnecting', () => leaveRoom(socket))
 })
 
 // events
@@ -59,7 +60,7 @@ function createRoom(room, socket) {
 
   // if room exists, error out
   if (!socket || roomExists(room.roomid)) {
-    log('create-room:error');
+    log('create-room:error')
     return
   }
 
@@ -74,7 +75,7 @@ function removeRoom(roomid) {
 
   // validation
   if (!socket || !roomExists(roomid)) {
-    log('remove-room:error');
+    log('remove-room:error')
     return
   }
 
@@ -94,8 +95,8 @@ function joinRoom(roomid, socket) {
   }
   // if room exists and user is already in the game, do nothing
   if (roomExists(roomid, socket.userid)) {
-    log('join-room:already-in-room');
-    updateRoomState()
+    log('join-room:already-in-room')
+    updateRoomState(rooms[roomid])
     return
   }
 
@@ -150,8 +151,6 @@ function leaveRoom(socket) {
       room.sockets.splice(index, 1)
     }
 
-
-
     // if the room is empty, remove the room
     if (room.sockets.length === 0) {
       removeRoom(tempRoomid)
@@ -174,8 +173,7 @@ function toggleReady(socket) {
   // if all users are ready start or stop the room timer
   if (allUsersReady(socket)) {
     startRoomTimer(socket)
-  }
-  else {
+  } else {
     stopRoomTimer(socket)
   }
 }
@@ -204,11 +202,10 @@ function setColor(color, socket) {
 
 // messages
 function roomMessage(message, socket, event) {
-    log('message');
+  log('message')
 
   if (!socket || !roomExists(socket.roomid, socket.userid)) {
-    log('message:error');
-    onError(socket)
+    onSocketError(socket, 'message')
     return
   }
 
@@ -227,17 +224,18 @@ function roomMessage(message, socket, event) {
 function startRoomTimer(socket) {
   setRoomState(socket.roomid, 'timer', 3)
   setRoomState(socket.roomid, 'timerActive', true, true)
-  rooms[socket.roomid].roomTimer = new Countdown({ 
-    seconds: 3,
-    onUpdateStatus: function(interval) {
+  rooms[socket.roomid].roomTimer = new Countdown({
+    seconds: 1,
+    update: function (interval) {
       roomMessage(interval, socket, 'countdown')
       setRoomState(socket.roomid, 'timer', interval, true)
     },
-    onCounterEnd: function() {
+    end: function () {
       setRoomState(socket.roomid, 'gameState.active', true, true)
-    }
-  });
-  rooms[socket.roomid].roomTimer.start();
+      startGame(rooms[socket.roomid])
+    },
+  })
+  rooms[socket.roomid].roomTimer.start()
 }
 function stopRoomTimer(socket) {
   let roundTimer = rooms[socket.roomid].roomTimer
@@ -262,7 +260,7 @@ function updateRoomState(room, updateAllRooms = false) {
 function updateRooms() {
   io.emit('update_rooms', formatRooms(rooms))
 }
-function onError(socket, message) {
+function onSocketError(socket, message) {
   log(`${message}:error`)
   if (socket && socket.emit) {
     socket.emit('join_room_error')
@@ -271,9 +269,15 @@ function onError(socket, message) {
     }
   }
 }
-function onSocketError(socket) {
-  if (socket) {
-    socket.emit('join_room_error')
+
+// game
+function startGame(room) {
+  room.game = new Game(room)
+  room.game.start()
+}
+function stopGame(room) {
+  if (room.game !== null) {
+    room.game.stop()
   }
 }
 
@@ -304,15 +308,17 @@ function allUsersReady(socket) {
 function roomExists(roomid, userid) {
   // if the room isn't defined
   if (rooms[roomid] === undefined) {
-    log('room-not-found');
+    // log('room-not-found')
     return false
   }
   // if the user isn't defined
-  else if (userid !== undefined && _.get(rooms, `${roomid}.usersState.${userid}`) === undefined) {
-    log('user-not-found');
+  else if (
+    userid !== undefined &&
+    _.get(rooms, `${roomid}.usersState.${userid}`) === undefined
+  ) {
+    // log('user-not-found')
     return false
-  }
-  else return true
+  } else return true
 }
 function getDefaultRoom(room) {
   return {
@@ -347,4 +353,8 @@ function formatRoom(room) {
     game: null,
     sockets: [],
   })
+}
+
+module.exports = {
+  joinRoom,
 }

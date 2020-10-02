@@ -4,7 +4,7 @@ const words = require('../assets/words.js')
 const LOG = true
 
 const defaultGameState = {
-  event: 'pre_round',
+  event: 'round_start',
   timer: 0,
   turnIndex: 1,
   turnUser: {},
@@ -38,7 +38,7 @@ const game = function (room, endGame) {
       room.users[userid].guesses = []
     })
 
-    room.gameState.event = 'pre_round'
+    room.gameState.event = 'start_round'
 
     // update room
     broadcastGameState()
@@ -58,7 +58,6 @@ const game = function (room, endGame) {
   function endRound() {
     room.gameState.event = 'round_end'
 
-    
     // move round count down, next user turn
     room.gameState.round++
 
