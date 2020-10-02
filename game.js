@@ -7,9 +7,9 @@ const Room = require('./services/Room')
 // timers
 const startRoundWaitTime = 3
 const endRoundWaitTime = 3
-const preTurnWaitTime = 3
+const preTurnWaitTime = 5
 const endTurnWaitTime = 3
-const turnWaitTime = 3
+const turnWaitTime = 10
 
 function Game(_room, updateRooms) {
   let room = _room
