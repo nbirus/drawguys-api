@@ -17,12 +17,12 @@ function Game(_room, updateRooms) {
 
   this.start = function () {
     log('start')
-    roundStart()
 
-    // reset ready flag
-    Object.values(room.usersState).forEach((user) => {
-      setUsersState(user.userid, 'ready', false)
-    })
+    // reset flags
+    Object.values(room.usersState).forEach(resetUser)
+
+    // start round
+    roundStart()
   }
   this.stop = function () {
     log('stop')
@@ -35,7 +35,8 @@ function Game(_room, updateRooms) {
   function roundStart() {
     // stop game if at limit
     if (getGameState('round') >= getGameState('numberOfRounds')) {
-      setGameState('event', 'game_end')
+      setGameState('event', 'game_end', true)
+      setGameState('round', 0, true)
       return
     }
 
@@ -60,6 +61,9 @@ function Game(_room, updateRooms) {
     })
   }
   function preTurnStart() {
+    // reset users before timer start
+    Object.values(room.usersState).forEach(resetUser)
+
     // if every user had taken a turn, end the round
     if (!setTurnUser()) {
       roundEnd()
@@ -145,6 +149,16 @@ function Game(_room, updateRooms) {
     for (const client of room.sockets) {
       client.emit('update_room', formatRoom(room))
     }
+  }
+  function resetUser(user) {
+    _.set(room, `usersState.${user.userid}`, {
+      ...user,
+      guesses: [],
+      ready: false,
+      match: false,
+      drawing: false,
+    })
+    updateRooms()
   }
 }
 

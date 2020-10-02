@@ -23,7 +23,7 @@ let defaultRoom = {
     turnUser: {},
     roundWord: '',
     round: 0,
-    numberOfRounds: 5,
+    numberOfRounds: 1,
   },
   usersState: {},
 }
@@ -35,7 +35,6 @@ let defaultRoomUser = {
   drawing: false,
   color: '',
   score: 0,
-  lastTurnScore: 0,
 }
 
 // socket events
@@ -222,7 +221,7 @@ function startRoomTimer(socket) {
   setRoomState(socket.roomid, 'timer', 3)
   setRoomState(socket.roomid, 'timerActive', true, true)
   rooms[socket.roomid].roomTimer = new Countdown({
-    seconds: 1,
+    seconds: 3,
     update: function (interval) {
       roomMessage(interval, socket, 'countdown')
       setRoomState(socket.roomid, 'timer', interval, true)
@@ -269,6 +268,7 @@ function onSocketError(socket, message) {
 
 // game
 function startGame(room) {
+  room.timerActive = false
   room.game = new Game(room, updateRooms)
   room.game.start()
 }
