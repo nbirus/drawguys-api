@@ -2,244 +2,147 @@ const io = require('../socket.js').getio()
 const _ = require('lodash')
 const getColor = require('../assets/colors')
 const game = require('./Game')
+const Countdown = require('../countdown.js')
 const LOG = true
 
-let rooms = {
-  // test: {
-  //   roomid: 'test',
-  //   roomname: 'test',
-  //   active: false,
-  //   users: {
-  //     test: {
-  //       guesses: [],
-  //       ready: false,
-  //       match: false,
-  //       typing: false,
-  //       color: 'blue',
-  //       score: 0,
-  //       username: 'Usernmae',
-  //     },
-  //     test2: {
-  //       guesses: [],
-  //       ready: false,
-  //       match: false,
-  //       typing: false,
-  //       color: 'maroon',
-  //       score: 0,
-  //       username: 'Other',
-  //     },
-  //   },
-  //   sockets: [],
-  //   messages: [],
-  // },
-  // test2: {
-  //   roomid: 'test',
-  //   roomname: 'Room Name',
-  //   active: false,
-  //   users: {
-  //     test: {
-  //       guesses: [],
-  //       ready: false,
-  //       match: false,
-  //       typing: false,
-  //       color: 'orange',
-  //       score: 0,
-  //       username: 'Test',
-  //     },
-  //   },
-  //   sockets: [],
-  //   messages: [],
-  // },
-  // test3: {
-  //   roomid: 'test',
-  //   roomname: 'Room Three',
-  //   active: false,
-  //   users: {
-  //     test: {
-  //       guesses: [],
-  //       ready: false,
-  //       match: false,
-  //       typing: false,
-  //       color: 'purple',
-  //       score: 0,
-  //       username: 'Lorium',
-  //     },
-  //     test2: {
-  //       guesses: [],
-  //       ready: false,
-  //       match: false,
-  //       typing: false,
-  //       color: 'green',
-  //       score: 0,
-  //       username: 'Other',
-  //     },
-  //     test2: {
-  //       guesses: [],
-  //       ready: false,
-  //       match: false,
-  //       typing: false,
-  //       color: 'red',
-  //       score: 0,
-  //       username: 'Other',
-  //     },
-  //   },
-  //   sockets: [],
-  //   messages: [],
-  // },
-  // test4: {
-  //   roomid: 'test',
-  //   roomname: 'test',
-  //   active: false,
-  //   users: {
-  //     test: {
-  //       guesses: [],
-  //       ready: false,
-  //       match: false,
-  //       typing: false,
-  //       color: 'blue',
-  //       score: 0,
-  //       username: 'Usernmae',
-  //     },
-  //     test2: {
-  //       guesses: [],
-  //       ready: false,
-  //       match: false,
-  //       typing: false,
-  //       color: 'maroon',
-  //       score: 0,
-  //       username: 'Other',
-  //     },
-  //   },
-  //   sockets: [],
-  //   messages: [],
-  // },
-}
+let rooms = {}
 let defaultRoom = {
   game: game,
   roomid: '',
   roomname: '',
-  active: false,
-  countdownActive: false,
-  countdown: 3,
-  users: {},
   sockets: [],
+  timer: 3,
+  timerActive: false,
+  roomTimer: null,
   messages: [],
+  gameState: {
+    active: false,
+    event: 'pre_round',
+    timer: 0,
+    turnIndex: 1,
+    turnUser: {},
+    round: 1,
+    roundWord: '',
+    numberOfRounds: 5,
+    numberOfTurns: 4,
+    roundTimer: 10,
+  },
+  usersState: {},
 }
 let defaultRoomUser = {
   guesses: [],
   ready: false,
   match: false,
   typing: false,
+  drawing: false,
   color: '',
   score: 0,
+  lastTurnScore: 0,
 }
 
 // socket events
 io.on('connection', (socket) => {
-  socket.on('get_rooms', () => getRooms(socket))
+  socket.on('get_rooms', () => socket.emit('update_rooms', formatRooms(rooms)))
   socket.on('create_room', (room) => createRoom(room, socket))
   socket.on('join_room', (roomid) => joinRoom(roomid, socket))
-  socket.on('leave_room', (roomid) => leaveRoom(roomid, socket))
-  socket.on('toggle_ready', (userid) => toggleReady(userid, socket))
-  socket.on('message', (message) => addMessage(message, socket))
+  socket.on('leave_room', () => leaveRoom(socket))
+  socket.on('toggle_ready', () => toggleReady(socket))
+  socket.on('message', (message) => roomMessage(message, socket))
   socket.on('color', (color) => setColor(color, socket))
   socket.on('typing', (typing) => setTyping(typing, socket))
-  socket.on('disconnecting', () => {
-    if (socket.roomid) {
-      leaveRoom(socket.roomid, socket)
-    }
-  })
+  socket.on('disconnecting', () => leaveRoom(socket.roomid, socket))
 })
 
-// actions
-function getRooms(socket) {
-  socket.emit('update_rooms', formatRooms(rooms))
-}
+// events
 function createRoom(room, socket) {
-  log('create-room', room.roomid)
+  log('create-room')
 
-  // validation
-  if (!socket || !room.roomid) {
-    log('create-room:error', room.roomid)
+  // if room exists, error out
+  if (!socket || roomExists(room.roomid)) {
+    log('create-room:error');
     return
   }
 
-  // add room to rooms object
-  rooms[room.roomid] = {
-    ..._.cloneDeep(defaultRoom),
-    ...room,
-  }
+  // create room
+  rooms[room.roomid] = getDefaultRoom(room)
 
   // join room after it's created
   joinRoom(room.roomid, socket)
 }
 function removeRoom(roomid) {
-  log('remove-room', roomid)
+  log('remove-room')
 
   // validation
-  if (!socket || !roomid || !rooms[roomid]) {
-    log('remove-room:error', room.roomid)
+  if (!socket || !roomExists(roomid)) {
+    log('remove-room:error');
     return
   }
 
   // remove room from rooms object
   delete rooms[roomid]
 
-  brodcastRooms()
+  // update ui
+  updateRooms()
 }
 function joinRoom(roomid, socket) {
-  log('join-room', roomid)
+  log('join-room')
 
-  let room = rooms[roomid]
-
-  // validation
-  if (!socket || !room || Object.keys(room.users).length === 8) {
-    log('join-room:error', socket.userid)
-    socket.emit('join_room_error')
+  // if room doesn't exists don't join
+  if (!socket || !roomExists(roomid)) {
+    onSocketError(socket, 'join-room')
+    return
+  }
+  // if room exists and user is already in the game, do nothing
+  if (roomExists(roomid, socket.userid)) {
+    log('join-room:already-in-room');
+    updateRoomState()
     return
   }
 
   // join room
   socket.join(roomid, () => {
+    let room = rooms[roomid]
+
     // set socket roomid
     socket.roomid = roomid
-    socket.color = getColor(room.users)
+    socket.color = getColor(room.usersState)
 
     // add socket to room
     room.sockets.push(socket)
 
     // add user to room
-    room.users[socket.userid] = {
-      ..._.cloneDeep(defaultRoomUser),
-      username: socket.username,
-      userid: socket.userid,
-      color: socket.color,
-    }
+    room.usersState[socket.userid] = getDefaultUser(socket)
 
-    addMessage('', socket, 'join-room')
-    brodcastRooms()
-    updateRoom(room)
+    // add event to message
+    roomMessage('', socket, 'join-room')
+
+    // update state
+    updateRoomState(room, true)
   })
 }
-function leaveRoom(roomid, socket) {
-  log('leave-room', roomid)
+function leaveRoom(socket) {
+  log('leave-room')
 
-  let room = rooms[roomid]
-
-  // validation
-  if (!socket || !room || !room.users[socket.userid]) {
-    log('leave-room:error', roomid)
+  // if room or user doesn't exists don't join
+  if (!socket || !roomExists(socket.roomid, socket.userid)) {
+    onSocketError(socket, 'leave-room')
     return
   }
 
-  addMessage('', socket, 'leave-room')
+  // add event to message
+  roomMessage('', socket, 'leave-room')
 
-  socket.leave(roomid, () => {
-    // reset roomid on socket
-    socket.roomid = ''
+  // leave room
+  socket.leave(socket.roomid, () => {
+    let tempRoomid = socket.roomid
+    let room = rooms[socket.roomid]
 
     // remove user object from room
-    delete room.users[socket.userid]
+    delete room.usersState[socket.userid]
+
+    // reset socket
+    socket.roomid = ''
+    socket.color = ''
 
     // remove socket
     const index = room.sockets.findIndex((s) => s.userid === socket.userid)
@@ -247,53 +150,69 @@ function leaveRoom(roomid, socket) {
       room.sockets.splice(index, 1)
     }
 
+
+
     // if the room is empty, remove the room
     if (room.sockets.length === 0) {
-      removeRoom(roomid)
+      removeRoom(tempRoomid)
     } else {
-      brodcastRooms()
-      updateRoom(room)
+      updateRoomState(room, true)
     }
   })
 }
-function toggleReady(userid, socket) {
-  log('toggle-ready', userid)
+function toggleReady(socket) {
+  log('toggle-ready')
 
-  let room = rooms[socket.roomid]
-
-  // validation
-  if (!socket || !room || !room.users[userid]) {
-    log('toggle-ready:error', socket.roomid)
+  if (!socket || !roomExists(socket.roomid, socket.userid)) {
+    onSocketError(socket, 'toggle-ready')
     return
   }
 
   // toggle ready
-  room.users[userid].ready = !room.users[userid].ready
+  setRoomUserState(socket, 'ready', !getRoomUserState(socket, 'ready'), true)
 
-  let userArray = Object.values(room.users)
-  if (userArray.length > 1 && userArray.every((user) => user.ready)) {
-    startGameCountdown(socket)
-    room.countdownActive = true
-  } else {
-    stopGameCountdown(socket)
-    room.countdownActive = false
+  // if all users are ready start or stop the room timer
+  if (allUsersReady(socket)) {
+    startRoomTimer(socket)
   }
-
-  brodcastRooms()
-  updateRoom(room)
+  else {
+    stopRoomTimer(socket)
+  }
 }
-function addMessage(message, socket, event) {
-  log('message', message)
+function setTyping(typing, socket) {
+  log('set-typing')
 
-  let room = rooms[socket.roomid]
-
-  // validation
-  if (!socket || !room) {
-    log('message:error', message)
+  if (!socket || !roomExists(socket.roomid, socket.userid)) {
+    onSocketError(socket, 'set-typing')
     return
   }
 
-  // add message
+  // toggle ready
+  setRoomUserState(socket, 'typing', typing, true)
+}
+function setColor(color, socket) {
+  log('set-color')
+
+  if (!socket || !roomExists(socket.roomid, socket.userid)) {
+    onSocketError(socket, 'set-color')
+    return
+  }
+
+  // toggle ready
+  setRoomUserState(socket, 'color', color, true)
+}
+
+// messages
+function roomMessage(message, socket, event) {
+    log('message');
+
+  if (!socket || !roomExists(socket.roomid, socket.userid)) {
+    log('message:error');
+    onError(socket)
+    return
+  }
+
+  let room = rooms[socket.roomid]
   room.messages.push({
     username: socket.username,
     userid: socket.userid,
@@ -301,102 +220,125 @@ function addMessage(message, socket, event) {
     event,
   })
 
-  // update
-  updateRoom(room)
-}
-function setColor(color, socket) {
-  let room = rooms[socket.roomid]
-  // validation
-  if (!socket || !room || !room.users[socket.userid]) {
-    log('set-color:error', socket.userid)
-    return
-  }
-
-  room.users[socket.userid].color = color
-
-  brodcastRooms()
-  updateRoom(room)
-}
-function setTyping(typing, socket) {
-  let room = rooms[socket.roomid]
-  // validation
-  if (!socket || !room || !room.users[socket.userid]) {
-    log('set-typing:error', socket.userid)
-    return
-  }
-
-  room.users[socket.userid].typing = typing
-
-  updateRoom(room)
-}
-function startGame(socket) {
-  log('start')
-
-  let room = rooms[socket.roomid]
-
-  // validation
-  if (!socket || !room) {
-    log('start:error', socket.roomid)
-    return
-  }
-  room.active = true
-  room.game(room)
-
-  brodcastRooms()
-  updateRoom(room)
+  updateRoomState(room)
 }
 
-let countdownInterval = null
-function startGameCountdown(socket) {
-  let count = 3
-  countDown()
-  countdownInterval = setInterval(countDown, 1250)
-
-  function countDown() {
-    rooms[socket.roomid].countdown = count
-
-    addMessage(count, socket, 'countdown')
-    if (count === 0) {
-      clearInterval(countdownInterval)
-      countdownInterval = null
-      startGame(socket)
-      // startGameCountdown(socket)
+// room timer
+function startRoomTimer(socket) {
+  setRoomState(socket.roomid, 'timer', 3)
+  setRoomState(socket.roomid, 'timerActive', true, true)
+  rooms[socket.roomid].roomTimer = new Countdown({ 
+    seconds: 3,
+    onUpdateStatus: function(interval) {
+      roomMessage(interval, socket, 'countdown')
+      setRoomState(socket.roomid, 'timer', interval, true)
+    },
+    onCounterEnd: function() {
+      setRoomState(socket.roomid, 'gameState.active', true, true)
     }
-    count--
-  }
+  });
+  rooms[socket.roomid].roomTimer.start();
 }
-function stopGameCountdown(socket) {
-  if (countdownInterval) {
-    addMessage('', socket, 'countdown-cancel')
-    clearInterval(countdownInterval)
-    countdownInterval = null
+function stopRoomTimer(socket) {
+  let roundTimer = rooms[socket.roomid].roomTimer
+  setRoomState(socket.roomid, 'timerActive', false, true)
+  if (roundTimer) {
+    roundTimer.stop()
   }
 }
 
-// broadcasts
-function brodcastRooms() {
-  io.emit('update_rooms', formatRooms(rooms))
-}
-function updateRoom(room) {
+// brodcast
+function updateRoomState(room, updateAllRooms = false) {
+  if (!room) {
+    return
+  }
   for (const client of room.sockets) {
     client.emit('update_room', formatRoom(room))
   }
+  if (updateAllRooms) {
+    updateRooms()
+  }
+}
+function updateRooms() {
+  io.emit('update_rooms', formatRooms(rooms))
+}
+function onError(socket, message) {
+  log(`${message}:error`)
+  if (socket && socket.emit) {
+    socket.emit('join_room_error')
+    if (socket.roomid) {
+      removeRoom(socket.roomid)
+    }
+  }
+}
+function onSocketError(socket) {
+  if (socket) {
+    socket.emit('join_room_error')
+  }
+}
+
+// setters
+function setRoomState(roomid, path, value, shouldUpdate = false) {
+  _.set(rooms, `${roomid}.${path}`, value)
+  if (shouldUpdate) {
+    updateRoomState(rooms[roomid])
+  }
+}
+function setRoomUserState(socket, path, value, shouldUpdate = false) {
+  _.set(rooms, `${socket.roomid}.usersState.${socket.userid}.${path}`, value)
+  if (shouldUpdate) {
+    updateRoomState(rooms[socket.roomid])
+  }
+}
+
+// getters
+function getRoomUserState(socket, path) {
+  return _.get(rooms, `${socket.roomid}.usersState.${socket.userid}.${path}`)
 }
 
 // helpers
-function log(message, roomid) {
+function allUsersReady(socket) {
+  let userArray = Object.values(_.get(rooms, `${socket.roomid}.usersState`))
+  return userArray.length > 1 && userArray.every((user) => user.ready)
+}
+function roomExists(roomid, userid) {
+  // if the room isn't defined
+  if (rooms[roomid] === undefined) {
+    log('room-not-found');
+    return false
+  }
+  // if the user isn't defined
+  else if (userid !== undefined && _.get(rooms, `${roomid}.usersState.${userid}`) === undefined) {
+    log('user-not-found');
+    return false
+  }
+  else return true
+}
+function getDefaultRoom(room) {
+  return {
+    ..._.cloneDeep(defaultRoom),
+    ...room,
+  }
+}
+function getDefaultUser(socket) {
+  return {
+    ..._.cloneDeep(defaultRoomUser),
+    username: socket.username,
+    userid: socket.userid,
+    color: socket.color,
+  }
+}
+function log(message) {
   if (LOG) {
-    console.log(`room:${message}`, roomid)
+    console.log(`room:${message}`)
   }
 }
 function formatRooms() {
   let returnRooms = {}
   let roomids = Object.keys(_.cloneDeep(rooms))
-
   roomids.forEach((roomid) => {
     returnRooms[roomid] = formatRoom(_.cloneDeep(rooms[roomid]))
   })
-
   return returnRooms
 }
 function formatRoom(room) {
