@@ -3,7 +3,7 @@ const _ = require('lodash')
 const getColor = require('../assets/colors')
 const Game = require('../game.js')
 const Countdown = require('../countdown.js')
-const LOG = true
+const LOG = false
 
 let rooms = {}
 let defaultRoom = {
@@ -23,7 +23,7 @@ let defaultRoom = {
     turnUser: {},
     roundWord: '',
     round: 0,
-    numberOfRounds: 1,
+    numberOfRounds: 2,
   },
   usersState: {},
 }
@@ -47,6 +47,7 @@ io.on('connection', (socket) => {
   socket.on('message', (message) => roomMessage(message, socket))
   socket.on('color', (color) => setColor(color, socket))
   socket.on('typing', (typing) => setTyping(typing, socket))
+  socket.on('word', (word) => setWord(word, socket))
   socket.on('disconnecting', () => leaveRoom(socket))
 })
 
@@ -183,6 +184,19 @@ function setTyping(typing, socket) {
 
   // toggle ready
   setRoomUserState(socket, 'typing', typing, true)
+}
+function setWord(word, socket) {
+  log('set-word')
+
+  if (!socket || !roomExists(socket.roomid, socket.userid)) {
+    onSocketError(socket, 'set-word')
+    return
+  }
+
+  if (isGameActive(rooms[socket.roomid])) {
+    rooms[socket.roomid].game.setWord(word)
+  }
+
 }
 function setColor(color, socket) {
   log('set-color')
@@ -350,6 +364,9 @@ function formatRoom(room) {
     game: null,
     sockets: [],
   })
+}
+function isGameActive(room) {
+  return room.game !== null
 }
 
 module.exports = {

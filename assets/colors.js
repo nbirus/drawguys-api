@@ -1,7 +1,6 @@
 const colors = [
   'blue',
   'olive',
-  'yellow',
   'orange',
   'red',
   'maroon',

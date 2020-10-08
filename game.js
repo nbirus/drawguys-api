@@ -30,6 +30,11 @@ function Game(_room, updateRooms) {
       room.gameState.gameTimer.stop()
     }
   }
+  this.setWord = function (word) {
+    setGameState('word', word, true)
+    cancelTimer()
+    turnStart()
+  }
 
   // round
   function roundStart() {
@@ -41,14 +46,18 @@ function Game(_room, updateRooms) {
     }
 
     // increment round count
-    setGameState('event', 'round_start')
+    // setGameState('event', 'round_start')
     setGameState('round', getGameState('round') + 1, true)
 
+
+    // start pre turn
+    preTurnStart()
+
     // start timer, on complete start pre turn
-    startTimer({
-      seconds: startRoundWaitTime,
-      end: preTurnStart,
-    })
+    // startTimer({
+    //   seconds: startRoundWaitTime,
+    //   end: preTurnStart,
+    // })
   }
   function roundEnd() {
     Object.values(room.usersState).forEach((user) => {
@@ -79,7 +88,8 @@ function Game(_room, updateRooms) {
     })
   }
   function turnStart() {
-    setGameState('event', 'turn_start')
+    setUserDrawing()
+    setGameState('event', 'turn_start', true)
 
     // user is drawing
     startTimer({
@@ -97,6 +107,13 @@ function Game(_room, updateRooms) {
   }
 
   // helpers
+  function setUserDrawing() {
+    let user = room.gameState.turnUser
+    user.selecting = false
+    user.drawing = true
+    room.usersState[user.userid] = user
+    updateRoomState()
+  }
   function setTurnUser() {
     let users = Object.values(room.usersState)
     if (turnIndex === users.length) {
@@ -106,22 +123,15 @@ function Game(_room, updateRooms) {
 
     // get user
     let turnUser = users[turnIndex]
-
     if (turnUser) {
-      // set drawing
+      // set selecting
       users.forEach((user) => {
-        setUsersState(user.userid, 'drawing', turnUser.userid === user.userid)
+        setUsersState(user.userid, 'selecting', turnUser.userid === user.userid)
       })
-
       // set turn user
-      setGameState(
-        'turnUser',
-        _.get(room),
-        `usersState.${turnUser.userid}`,
-        true
-      )
+      setGameState('turnUser', users[turnIndex], true)
     }
-
+  
     turnIndex++
     return true
   }
@@ -131,6 +141,9 @@ function Game(_room, updateRooms) {
       update: (timer) => setGameState('timer', timer, true),
     })
     room.gameState.gameTimer.start()
+  }
+  function cancelTimer() {
+    room.gameState.gameTimer.stop()
   }
   function setGameState(path, value, shouldUpdate = false) {
     _.set(room, `gameState.${path}`, value)
@@ -146,8 +159,10 @@ function Game(_room, updateRooms) {
     updateRooms()
   }
   function updateRoomState() {
-    for (const client of room.sockets) {
-      client.emit('update_room', formatRoom(room))
+    if (room.sockets) {
+      for (const client of room.sockets) {
+        client.emit('update_room', formatRoom(room))
+      }
     }
   }
   function resetUser(user) {
@@ -157,6 +172,7 @@ function Game(_room, updateRooms) {
       ready: false,
       match: false,
       drawing: false,
+      selecting: false,
     })
     updateRooms()
   }
