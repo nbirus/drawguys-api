@@ -36,6 +36,11 @@ function Game(_room, updateRooms) {
     turnStart()
   }
   this.guess = function (guess = '', userid) {
+
+    if (!room.gameState.word) {
+      return
+    }
+
     let guessed = guess.toLowerCase() === room.gameState.word.toLowerCase()
 
     setUsersState(userid, 'guess', guess)
@@ -177,7 +182,7 @@ function Game(_room, updateRooms) {
   function setUsersState(userid, path, value, shouldUpdate = false) {
     _.set(room, `usersState.${userid}.${path}`, value)
     updateRooms()
-        if (shouldUpdate) {
+    if (shouldUpdate) {
       updateRoomState()
     }
   }
