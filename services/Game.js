@@ -12,7 +12,7 @@ const defaultGameState = {
   roundWord: '',
   numberOfRounds: 5,
   numberOfTurns: 4,
-  roundTimer: 10,
+  roundTimer: 20,
 }
 
 const game = function (room, endGame) {

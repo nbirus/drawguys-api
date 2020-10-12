@@ -15,6 +15,7 @@ let defaultRoom = {
   timerActive: false,
   roomTimer: null,
   messages: [],
+  drawState: {},
   gameState: {
     active: false,
     event: 'pre_round',
@@ -23,7 +24,7 @@ let defaultRoom = {
     turnUser: {},
     roundWord: '',
     round: 0,
-    numberOfRounds: 2,
+    numberOfRounds: 3,
   },
   usersState: {},
 }
@@ -49,6 +50,12 @@ io.on('connection', (socket) => {
   socket.on('typing', (typing) => setTyping(typing, socket))
   socket.on('word', (word) => setWord(word, socket))
   socket.on('disconnecting', () => leaveRoom(socket))
+
+  socket.on('mousedown', (e) => updateDrawState(e, 'mousedown', socket))
+  socket.on('mousemove', (e) => updateDrawState(e, 'mousemove',socket))
+  socket.on('mouseup', (e) => updateDrawState(e, 'mouseup',socket))
+  socket.on('mouseout', (e) => updateDrawState(e, 'mouseout',socket))
+  socket.on('set_draw_state', (state) => updateDrawState(state, 'set_draw_state', socket))
 })
 
 // events
@@ -270,6 +277,15 @@ function updateRoomState(room, updateAllRooms = false) {
 function updateRooms() {
   io.emit('update_rooms', formatRooms(rooms))
 }
+function updateDrawState(e, event, socket) {
+  if (rooms[socket.roomid]) {
+    for (const client of rooms[socket.roomid].sockets) {
+      if (client.userid !== socket.userid) {
+        client.emit(event, e)
+      }
+    }
+  }
+}
 function onSocketError(socket, message) {
   log(`${message}:error`)
   if (socket && socket.emit) {
@@ -289,6 +305,7 @@ function startGame(room) {
 function stopGame(room) {
   if (room.game !== null) {
     room.game.stop()
+
   }
 }
 
@@ -298,6 +315,7 @@ function setRoomState(roomid, path, value, shouldUpdate = false) {
   if (shouldUpdate) {
     updateRoomState(rooms[roomid])
   }
+
 }
 function setRoomUserState(socket, path, value, shouldUpdate = false) {
   _.set(rooms, `${socket.roomid}.usersState.${socket.userid}.${path}`, value)
