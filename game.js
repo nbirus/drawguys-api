@@ -9,7 +9,7 @@ const startRoundWaitTime = 3
 const endRoundWaitTime = 3
 const preTurnWaitTime = 10
 const endTurnWaitTime = 3
-const turnWaitTime = 20
+const turnWaitTime = 25
 
 function Game(_room, updateRooms) {
   let room = _room
@@ -34,6 +34,22 @@ function Game(_room, updateRooms) {
     setGameState('word', word, true)
     cancelTimer()
     turnStart()
+  }
+  this.guess = function (guess = '', userid) {
+    let guessed = guess.toLowerCase() === room.gameState.word.toLowerCase()
+
+    setUsersState(userid, 'guess', guess)
+    setUsersState(userid, 'match', guessed, true)
+
+    if (guessed) {
+      incUserScore(userid)
+      incDrawScore()
+    }
+
+    if (Object.values(room.usersState).every(user => user.match || user.drawing)) {
+      cancelTimer()
+      turnEnd()
+    }
   }
 
   // round
@@ -156,6 +172,19 @@ function Game(_room, updateRooms) {
   }
   function setUsersState(userid, path, value, shouldUpdate = false) {
     _.set(room, `usersState.${userid}.${path}`, value)
+    updateRooms()
+  }
+  function incUserScore(userid) {
+    let score = _.get(room, `usersState.${userid}.score`)
+    score += 100
+    _.set(room, `usersState.${userid}.score`, score)
+    updateRooms()
+  }
+  function incDrawScore() {
+    let userid = room.gameState.turnUser.userid
+    let score = _.get(room, `usersState.${userid}.score`)
+    score += 50
+    _.set(room, `usersState.${userid}.score`, score)
     updateRooms()
   }
   function updateRoomState() {

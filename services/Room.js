@@ -29,7 +29,7 @@ let defaultRoom = {
   usersState: {},
 }
 let defaultRoomUser = {
-  guesses: [],
+  guess: '',
   ready: false,
   match: false,
   typing: false,
@@ -46,6 +46,7 @@ io.on('connection', (socket) => {
   socket.on('leave_room', () => leaveRoom(socket))
   socket.on('toggle_ready', () => toggleReady(socket))
   socket.on('message', (message) => roomMessage(message, socket))
+  socket.on('guess', (guess) => roomGuess(guess, socket))
   socket.on('color', (color) => setColor(color, socket))
   socket.on('typing', (typing) => setTyping(typing, socket))
   socket.on('word', (word) => setWord(word, socket))
@@ -120,6 +121,10 @@ function joinRoom(roomid, socket) {
 
     // add event to message
     roomMessage('', socket, 'join-room')
+
+    if (socket.color === undefined) {
+      socket.color = getColor(room.usersState)
+    }
 
     // update state
     updateRoomState(room, true)
@@ -235,6 +240,18 @@ function roomMessage(message, socket, event) {
   })
 
   updateRoomState(room)
+}
+function roomGuess(guess, socket) {
+  log('guess')
+
+  if (!socket || !roomExists(socket.roomid, socket.userid)) {
+    onSocketError(socket, 'guess')
+    return
+  }
+
+  if (isGameActive(rooms[socket.roomid])) {
+    rooms[socket.roomid].game.guess(guess, socket.userid)
+  }
 }
 
 // room timer
