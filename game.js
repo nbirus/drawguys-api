@@ -116,6 +116,10 @@ function Game(_room, updateRooms) {
   function turnEnd() {
     setGameState('event', 'turn_end')
 
+    if (noOneGuessed()) {
+      decDrawScore()
+    }
+
     startTimer({
       seconds: endTurnWaitTime,
       end: preTurnStart,
@@ -173,17 +177,27 @@ function Game(_room, updateRooms) {
   function setUsersState(userid, path, value, shouldUpdate = false) {
     _.set(room, `usersState.${userid}.${path}`, value)
     updateRooms()
+        if (shouldUpdate) {
+      updateRoomState()
+    }
   }
   function incUserScore(userid) {
     let score = _.get(room, `usersState.${userid}.score`)
-    score += 100
+    score += getIncScore()
     _.set(room, `usersState.${userid}.score`, score)
     updateRooms()
   }
   function incDrawScore() {
     let userid = room.gameState.turnUser.userid
     let score = _.get(room, `usersState.${userid}.score`)
-    score += 50
+    score += 25
+    _.set(room, `usersState.${userid}.score`, score)
+    updateRooms()
+  }
+  function decDrawScore() {
+    let userid = room.gameState.turnUser.userid
+    let score = _.get(room, `usersState.${userid}.score`)
+    score -= 25
     _.set(room, `usersState.${userid}.score`, score)
     updateRooms()
   }
@@ -204,6 +218,27 @@ function Game(_room, updateRooms) {
       selecting: false,
     })
     updateRooms()
+  }
+  function noOneGuessed() {
+    return Object.values(room.usersState).every(user => user.match || user.drawing)
+  }
+  function getIncScore() {
+    let time = room.gameState.timer
+    if (time > 20) {
+      return 250
+    }
+    else if (time > 15) {
+      return 200
+    }
+    else if (time > 10) {
+      return 100
+    }
+    else if (time > 5) {
+      return 50
+    }
+    else if (time > 3) {
+      return 25
+    }
   }
 }
 
