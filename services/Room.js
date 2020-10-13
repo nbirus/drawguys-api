@@ -24,7 +24,7 @@ let defaultRoom = {
     turnUser: {},
     roundWord: '',
     round: 0,
-    numberOfRounds: 1,
+    numberOfRounds: 5,
   },
   usersState: {},
 }
