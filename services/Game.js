@@ -35,7 +35,8 @@ const game = function (room, endGame) {
     // reset user info
     Object.keys(room.users).forEach((userid) => {
       room.users[userid].match = false
-      room.users[userid].guesses = []
+      room.users[userid].guess = ''
+      room.users[userid].matchTime = 0
     })
 
     room.gameState.event = 'start_round'

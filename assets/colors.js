@@ -17,13 +17,11 @@ function getColor(users) {
       activeIndexes.push(colorIndex)
     }
   }
-
   function generateRandom(min, max) {
     var num = Math.floor(Math.random() * (max - min + 1)) + min
     return activeIndexes.includes(num) ? generateRandom(min, max) : num
   }
-
-  return colors[generateRandom(0, 7)]
+  return colors[generateRandom(0, 6)]
 }
 
 module.exports = getColor

@@ -24,7 +24,7 @@ let defaultRoom = {
     turnUser: {},
     roundWord: '',
     round: 0,
-    numberOfRounds: 3,
+    numberOfRounds: 1,
   },
   usersState: {},
 }
@@ -36,6 +36,7 @@ let defaultRoomUser = {
   drawing: false,
   color: '',
   score: 0,
+  matchTime: 0,
 }
 
 // socket events
@@ -122,12 +123,8 @@ function joinRoom(roomid, socket) {
     // add event to message
     roomMessage('', socket, 'join-room')
 
-    if (socket.color === undefined) {
-      socket.color = getColor(room.usersState)
-    }
-
-    // update state
     updateRoomState(room, true)
+
   })
 }
 function leaveRoom(socket) {
