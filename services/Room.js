@@ -60,6 +60,8 @@ io.on('connection', (socket) => {
   socket.on('mousemove', (e) => updateDrawState(e, 'mousemove',socket))
   socket.on('mouseup', (e) => updateDrawState(e, 'mouseup',socket))
   socket.on('mouseout', (e) => updateDrawState(e, 'mouseout',socket))
+  socket.on('undo', () => updateDrawState('', 'undo', socket))
+  socket.on('reset', () => updateDrawState('', 'reset', socket))
   socket.on('set_draw_state', (state) => updateDrawState(state, 'set_draw_state', socket))
 })
 
