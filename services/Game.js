@@ -1,4 +1,4 @@
-const Countdown = require('./countdown.js')
+const Countdown = require('../countdown.js')
 const LOG = true
 const _ = require('lodash')
 
