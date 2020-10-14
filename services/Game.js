@@ -29,6 +29,7 @@ function Game(_room, updateRooms) {
     }
   }
   this.setWord = function (word) {
+    room.gameState.usedWords.push(word)
     setGameState('word', word, true)
     cancelTimer()
     turnStart()

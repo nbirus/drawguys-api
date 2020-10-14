@@ -22,6 +22,7 @@ let defaultRoom = {
     timer: 0,
     gameTimer: null,
     turnUser: {},
+    usedWords: [],
     roundWord: '',
     round: 0,
     numberOfRounds: 5,
