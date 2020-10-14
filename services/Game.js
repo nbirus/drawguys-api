@@ -1,159 +1,318 @@
-const io = require('../socket.js').getio()
-const _ = require('lodash')
-const words = require('../assets/words.js')
+const Countdown = require('./countdown.js')
 const LOG = true
+const _ = require('lodash')
 
-const defaultGameState = {
-  event: 'round_start',
-  timer: 0,
-  turnIndex: 1,
-  turnUser: {},
-  round: 1,
-  roundWord: '',
-  numberOfRounds: 5,
-  numberOfTurns: 4,
-  roundTimer: 20,
-}
+// timers
+const endRoundWaitTime = 10
+const endGameWaitTime = 5
+const preTurnWaitTime = 5
+const endTurnWaitTime = 5
+const turnWaitTime = 30
 
-const game = function (room, endGame) {
-  // init game state
-  room.gameState = _.cloneDeep(defaultGameState)
-  room.gameState.numberOfTurns = Object.keys(room.users).length
-  room.gameState.turnUser = getUserAtIndex(room.gameState.turnIndex, room)
+function Game(_room, updateRooms) {
+  let room = _room
+  let turnIndex = 0
 
-  // brodcast start
-  broadcastGameState()
+  this.start = function () {
+    log('start')
 
-  let timerInterval = null
+    // reset flags
+    Object.values(room.usersState).forEach(resetUser)
 
-  function loop() {
-    log('loop', `${room.gameState.round}/${room.gameState.round}`)
-
-    // create new word
-    room.gameState.roundWord = getRandomWord()
-
-    // reset user info
-    Object.keys(room.users).forEach((userid) => {
-      room.users[userid].match = false
-      room.users[userid].guess = ''
-      room.users[userid].matchTime = 0
-    })
-
-    room.gameState.event = 'start_round'
-
-    // update room
-    broadcastGameState()
-
-    // wait 3 seconds before starting next round
-    startTimer(3, startRound)
+    // start round
+    roundStart()
   }
-
-  // actions
-  function startRound() {
-    room.gameState.event = 'round_start'
-    broadcastGameState()
-
-    // start round timer
-    startTimer(room.gameState.roundTimer, endRound)
-  }
-  function endRound() {
-    room.gameState.event = 'round_end'
-
-    // move round count down, next user turn
-    room.gameState.round++
-
-    // update turn
-    incrementTurnIndex()
-
-    // update game
-    broadcastGameState()
-
-    // check to see if game is over
-    if (room.gameState.round > room.gameState.numberOfRounds) {
-      endGame()
-    } else {
-      // allow 3 seconds of endtime
-      startTimer(3, loop)
+  this.stop = function () {
+    log('stop')
+    if (room.gameState.gameTimer) {
+      room.gameState.gameTimer.stop()
     }
   }
-  function guess(data, cb) {
-    let roundWordMatch =
-      data.guess &&
-      data.guess.toUpperCase() === room.gameState.roundWord.toUpperCase()
-    cb(roundWordMatch)
+  this.setWord = function (word) {
+    setGameState('word', word, true)
+    cancelTimer()
+    turnStart()
   }
-  function endGame() {
-    log('end')
-    clearTimer()
+  this.guess = function (guess = '', userid) {
+
+    if (!room.gameState.word) {
+      return
+    }
+
+    let guessed = guess.toLowerCase() === room.gameState.word.toLowerCase()
+
+    // set match
+    if (guessed) {
+      setUsersState(userid, 'match', true)
+      setUsersState(userid, 'matchTime', room.gameState.timer, true)
+      addGuessScore(userid, getScore())
+      addDrawScore(getDrawScore())
+    }
+    else {
+      addGuessScore(userid, -10)
+      setUsersState(userid, 'guess', guess, true)
+    }
+
+    if (Object.values(room.usersState).every(user => user.match || user.drawing)) {
+      cancelTimer()
+      turnEnd()
+    }
+  }
+
+  // round
+  function roundStart() {
+    // stop game if at limit
+    if (getGameState('round') >= getGameState('numberOfRounds')) {
+      setGameState('event', 'game_end', true)
+      setGameState('active', false, true)
+      setGameState('round', 0, true)
+      return
+    }
+
+    // reset users before timer start
+    Object.values(room.usersState).forEach(roundResetUser)
+
+    // increment round count
+    setGameState('round', getGameState('round') + 1, true)
+
+    // start pre turn
+    preTurnStart()
+  }
+  function roundEnd() {
+    Object.values(room.usersState).forEach((user) => {
+      setUsersState(user.userid, 'drawing', false)
+    })
+    setGameState('event', 'round_end')
+    startTimer({
+      seconds: room.gameState.round === room.gameState.numberOfRounds ? endGameWaitTime : endRoundWaitTime,
+      end: roundStart,
+    })
+  }
+  function preTurnStart() {
+    // reset users before timer start
+    Object.values(room.usersState).forEach(turnResetUser)
+
+    // if every user had taken a turn, end the round
+    if (!setTurnUser()) {
+      roundEnd()
+      return
+    }
+
+    setGameState('event', 'pre_turn')
+
+    // user is selecting a word, start turn after
+    startTimer({
+      seconds: preTurnWaitTime,
+      end: turnStart,
+    })
+  }
+  function turnStart() {
+    setUserDrawing()
+    setGameState('event', 'turn_start', true)
+
+    // user is drawing
+    startTimer({
+      seconds: turnWaitTime,
+      end: turnEnd,
+    })
+  }
+  function turnEnd() {
+    setGameState('event', 'turn_end')
+
+    if (noOneGuessed()) {
+      addDrawScore(-200)
+    }
+
+    // if user didn't match, remove 50 points
+    Object.values(room.usersState).forEach(user => {
+      if (!user.match) {
+        addGuessScore(user.userid, -50)
+      }
+    })
+
+    startTimer({
+      seconds: endTurnWaitTime,
+      end: preTurnStart,
+    })
   }
 
   // helpers
-  function startTimer(timerLength, cb) {
-    // set timer length
-    room.gameState.timer = timerLength
-
-    // set timer interval
-    timerInterval = setInterval(() => {
-      updateTimer(cb)
-    }, 1000)
+  function setUserDrawing() {
+    let user = room.gameState.turnUser
+    user.selecting = false
+    user.drawing = true
+    room.usersState[user.userid] = user
+    updateRoomState()
   }
-  function updateTimer(cb) {
-    if (room.gameState.timer === -1) {
-      clearTimer()
-      cb()
-    } else {
-      broadcastGameState()
-      room.gameState.timer--
-    }
-  }
-  function clearTimer() {
-    clearInterval(timerInterval)
-    timerInterval = null
-    timerCallback = null
-  }
-  function incrementTurnIndex() {
-    if (room.gameState.turnIndex === room.gameState.numberOfTurns) {
-      room.gameState.turnIndex = 1
-    } else {
-      room.gameState.turnIndex++
+  function setTurnUser() {
+    let users = Object.values(room.usersState)
+    if (turnIndex === users.length) {
+      turnIndex = 0
+      return false
     }
 
-    room.gameState.turnUser = getUserAtIndex(room.gameState.turnIndex, room)
+    // get user
+    let turnUser = users[turnIndex]
+    if (turnUser) {
+      // set selecting
+      users.forEach((user) => {
+        setUsersState(user.userid, 'selecting', turnUser.userid === user.userid)
+      })
+      // set turn user
+      setGameState('turnUser', users[turnIndex], true)
+    }
+  
+    turnIndex++
+    return true
   }
-  function getRandomWord() {
-    return words[Math.floor(Math.random() * words.length)]
+  function startTimer(options) {
+    room.gameState.gameTimer = new Countdown({
+      ...options,
+      update: (timer) => setGameState('timer', timer, true),
+    })
+    room.gameState.gameTimer.start()
   }
-
-  // broadcasts
-  function broadcastGameState() {
-    for (const client of room.sockets) {
-      client.emit('update_game_state', room.gameState)
+  function cancelTimer() {
+    room.gameState.gameTimer.stop()
+  }
+  function setGameState(path, value, shouldUpdate = false) {
+    _.set(room, `gameState.${path}`, value)
+    if (shouldUpdate) {
+      updateRoomState()
+    }
+  }
+  function getGameState(path) {
+    return _.get(room, `gameState.${path}`)
+  }
+  function setUsersState(userid, path, value, shouldUpdate = false) {
+    _.set(room, `usersState.${userid}.${path}`, value)
+    updateRooms()
+    if (shouldUpdate) {
+      updateRoomState()
     }
   }
 
-  // start game
-  loop()
-
-  // expose functions
-  return {
-    guess,
-    endGame,
+  function updateRoomState() {
+    if (room.sockets) {
+      for (const client of room.sockets) {
+        client.emit('update_room', formatRoom(room))
+      }
+    }
   }
+  function resetUser(user) {
+    _.set(room, `usersState.${user.userid}`, {
+      ...user,
+      guess: '',
+      ready: false,
+      match: false,
+      typing: false,
+      drawing: false,
+      matchTime: 0,
+      turnScore: 0,
+      scoreChange: 0,
+      roundScore: 0,
+      score: 0,
+    })
+    updateRooms()
+  }
+  function turnResetUser(user) {
+    _.set(room, `usersState.${user.userid}`, {
+      ...user,
+      guess: '',
+      ready: false,
+      match: false,
+      typing: false,
+      drawing: false,
+      matchTime: 0,
+      scoreChange: 0,
+      turnScore: 0,
+    })
+    updateRooms()
+  }
+  function roundResetUser(user) {
+    _.set(room, `usersState.${user.userid}`, {
+      ...user,
+      guess: '',
+      ready: false,
+      match: false,
+      typing: false,
+      drawing: false,
+      matchTime: 0,
+      scoreChange: 0,
+      turnScore: 0,
+      roundScore: 0,
+    })
+    updateRooms()
+  }
+  function noOneGuessed() {
+    return Object.values(room.usersState).every(user => !user.match || user.drawing)
+  }
+
+  // scoreing
+  function addGuessScore(userid, addScore) {
+    let score = _.get(room, `usersState.${userid}.score`)
+    let turnScore = _.get(room, `usersState.${userid}.turnScore`)
+    let roundScore = _.get(room, `usersState.${userid}.roundScore`)
+    let scoreChange = _.get(room, `usersState.${userid}.scoreChange`)
+
+    score += addScore
+    turnScore += addScore
+    roundScore += addScore
+    scoreChange = addScore
+
+    _.set(room, `usersState.${userid}.score`, score)
+    _.set(room, `usersState.${userid}.turnScore`, turnScore)
+    _.set(room, `usersState.${userid}.roundScore`, roundScore)
+    _.set(room, `usersState.${userid}.roundScore`, scoreChange)
+    
+    updateRooms()
+  }
+  function addDrawScore(addScore) {
+    addGuessScore(_.get(room, 'gameState.turnUser.userid'), addScore)
+  }
+  function getScore() {
+    let time = room.gameState.timer
+    if (time > 20) {
+      return 300
+    }
+    else if (time > 15) {
+      return 200
+    }
+    else if (time > 10) {
+      return 150
+    }
+    else if (time > 5) {
+      return 100
+    }
+    else {
+      return 50
+    }
+  }
+  function getDrawScore() {
+    let time = room.gameState.timer
+    if (time > 20) {
+      return 100
+    }
+    else {
+      return 50
+    }
+  }
+
 }
 
-module.exports = game
+module.exports = Game
 
 // helpers
-function log(message, roomid, userid) {
+function log(message) {
   if (LOG) {
-    if (userid) {
-      console.log(`game:${message}`, roomid, userid)
-    } else {
-      console.log(`game:${message}`, roomid)
-    }
+    console.log(`game:${message}`)
   }
 }
-function getUserAtIndex(index, room) {
-  let userid = Object.keys(room.users)[index - 1]
-  return room.users[userid]
+
+function formatRoom(room) {
+  return _.cloneDeep({
+    ...room,
+    game: null,
+    sockets: [],
+  })
 }

@@ -10,7 +10,7 @@ const io = require('./socket.js').init(http)
 
 require('./services/User.js')
 require('./services/Room.js')
-require('./services/Game.js')
+// require('./services/Game.js')
 
 // start server
 http.listen(PORT, function () {

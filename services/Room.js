@@ -1,7 +1,7 @@
 const io = require('../socket.js').getio()
 const _ = require('lodash')
 const getColor = require('../assets/colors')
-const Game = require('../game.js')
+const Game = require('./Game.js')
 const Countdown = require('../countdown.js')
 const LOG = false
 
