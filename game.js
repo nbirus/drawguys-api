@@ -1,8 +1,6 @@
-const io = require('./socket.js').getio()
 const Countdown = require('./countdown.js')
 const LOG = true
 const _ = require('lodash')
-const Room = require('./services/Room')
 
 // timers
 const endRoundWaitTime = 5
