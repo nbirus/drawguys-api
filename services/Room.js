@@ -35,8 +35,11 @@ let defaultRoomUser = {
   typing: false,
   drawing: false,
   color: '',
-  score: 0,
   matchTime: 0,
+  turnScore: 0,
+  roundScore: 0,
+  scoreChange: 0,
+  score: 0,
 }
 
 // socket events
