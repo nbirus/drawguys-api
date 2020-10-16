@@ -99,7 +99,8 @@ function Game(_room, updateRooms) {
       return
     }
 
-    setGameState('event', 'pre_turn')
+    setGameState('word', '')
+    setGameState('event', 'pre_turn', true)
 
     // user is selecting a word, start turn after
     startTimer({
