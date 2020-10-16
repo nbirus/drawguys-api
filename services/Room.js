@@ -112,6 +112,12 @@ function joinRoom(roomid, socket) {
     return
   }
 
+
+  if (Object.keys(rooms[roomid].usersState).length === 6) {
+    onSocketError(socket, 'join-room:too-many-players')
+    return
+  }
+
   // join room
   socket.join(roomid, () => {
     let room = rooms[roomid]

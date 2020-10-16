@@ -3,7 +3,7 @@ const LOG = true
 const _ = require('lodash')
 
 // timers
-const endRoundWaitTime = 10
+const endRoundWaitTime = 5
 const endGameWaitTime = 5
 const preTurnWaitTime = 5
 const endTurnWaitTime = 5
@@ -246,6 +246,7 @@ function Game(_room, updateRooms) {
     updateRooms()
   }
   function noOneGuessed() {
+    console.log(Object.values(room.usersState).every(user => !user.match || user.drawing));
     return Object.values(room.usersState).every(user => !user.match || user.drawing)
   }
 
