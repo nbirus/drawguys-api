@@ -50,7 +50,6 @@ function Game(_room, updateRooms) {
       addDrawScore(getDrawScore())
     }
     else {
-      addGuessScore(userid, -10)
       setUsersState(userid, 'guess', guess, true)
     }
 
@@ -99,7 +98,6 @@ function Game(_room, updateRooms) {
       return
     }
 
-    setGameState('word', '')
     setGameState('event', 'pre_turn', true)
 
     // user is selecting a word, start turn after
@@ -275,16 +273,13 @@ function Game(_room, updateRooms) {
   }
   function getScore() {
     let time = room.gameState.timer
-    if (time > 20) {
+    if (time >= 20) {
       return 300
     }
-    else if (time > 15) {
+    else if (time >= 10) {
       return 200
     }
-    else if (time > 10) {
-      return 150
-    }
-    else if (time > 5) {
+    else if (time >= 5) {
       return 100
     }
     else {
@@ -293,7 +288,10 @@ function Game(_room, updateRooms) {
   }
   function getDrawScore() {
     let time = room.gameState.timer
-    if (time > 20) {
+    if (time >= 20) {
+      return 200
+    }
+    else if (time >= 10) {
       return 100
     }
     else {
