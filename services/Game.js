@@ -128,7 +128,7 @@ function Game(_room, updateRooms) {
     // if user didn't match, remove 50 points
     Object.values(room.usersState).forEach(user => {
       if (!user.match) {
-        addGuessScore(user.userid, -50)
+        addGuessScore(user.userid, room.gameState.round > 2 ? -200 : -50)
       }
     })
 

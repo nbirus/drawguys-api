@@ -25,7 +25,7 @@ let defaultRoom = {
     usedWords: [],
     roundWord: '',
     round: 0,
-    numberOfRounds: 5,
+    numberOfRounds: 4,
   },
   usersState: {},
 }
