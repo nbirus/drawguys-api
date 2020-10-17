@@ -92,19 +92,21 @@ function Game(_room, updateRooms) {
     // reset users before timer start
     Object.values(room.usersState).forEach(turnResetUser)
 
-    // if every user had taken a turn, end the round
-    if (!setTurnUser()) {
-      roundEnd()
-      return
-    }
+    setTimeout(() => {
+      // if every user had taken a turn, end the round
+      if (!setTurnUser()) {
+        roundEnd()
+        return
+      }
 
-    setGameState('event', 'pre_turn', true)
+      setGameState('event', 'pre_turn', true)
 
-    // user is selecting a word, start turn after
-    startTimer({
-      seconds: preTurnWaitTime,
-      end: turnStart,
-    })
+      // user is selecting a word, start turn after
+      startTimer({
+        seconds: preTurnWaitTime,
+        end: turnStart,
+      })
+    }, 100)
   }
   function turnStart() {
     setUserDrawing()
