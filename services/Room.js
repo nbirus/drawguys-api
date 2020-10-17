@@ -55,6 +55,7 @@ io.on('connection', (socket) => {
   socket.on('color', (color) => setColor(color, socket))
   socket.on('typing', (typing) => setTyping(typing, socket))
   socket.on('word', (word) => setWord(word, socket))
+  socket.on('word_default', (word) => setWordDefault(word, socket))
   socket.on('disconnecting', () => leaveRoom(socket))
 
   socket.on('mousedown', (e) => updateDrawState(e, 'mousedown', socket))
@@ -113,7 +114,7 @@ function joinRoom(roomid, socket) {
   }
 
 
-  if (Object.keys(rooms[roomid].usersState).length === 20) {
+  if (Object.keys(rooms[roomid].usersState).length === 8) {
     onSocketError(socket, 'join-room:too-many-players')
     return
   }
@@ -216,6 +217,19 @@ function setWord(word, socket) {
 
   if (isGameActive(rooms[socket.roomid])) {
     rooms[socket.roomid].game.setWord(word)
+  }
+
+}
+function setWordDefault(word, socket) {
+  log('set-word-default')
+
+  if (!socket || !roomExists(socket.roomid, socket.userid)) {
+    onSocketError(socket, 'set-word-default')
+    return
+  }
+
+  if (isGameActive(rooms[socket.roomid])) {
+    rooms[socket.roomid].game.setWordDefault(word)
   }
 
 }

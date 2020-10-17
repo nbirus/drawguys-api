@@ -2,25 +2,32 @@ const Countdown = require('../countdown.js')
 const LOG = true
 const _ = require('lodash')
 
-// timers
-const endRoundWaitTime = 5
-const endGameWaitTime = 5
-const preTurnWaitTime = 5
-const endTurnWaitTime = 5
-const turnWaitTime = 30
+
 
 function Game(_room, updateRooms) {
   let room = _room
   let turnIndex = 0
 
+  // timers
+  let endRoundWaitTime = 5
+  let endGameWaitTime = 5
+  let preTurnWaitTime = 5
+  let endTurnWaitTime = 5
+  let turnWaitTime = 30
+
   this.start = function () {
     log('start')
 
-    // reset flags
-    Object.values(room.usersState).forEach(resetUser)
+    // let UI hide lobby before reset flags
+    setTimeout(() => {
+      Object.values(room.usersState).forEach(resetUser)
+    }, 100)
 
-    // start round
-    roundStart()
+    // start game after refresh
+    setTimeout(() => {
+      roundStart()
+    }, 200)
+    
   }
   this.stop = function () {
     log('stop')
@@ -32,7 +39,11 @@ function Game(_room, updateRooms) {
     room.gameState.usedWords.push(word)
     setGameState('word', word, true)
     cancelTimer()
-    turnStart()
+    triggerTurnStart()
+  }
+  this.setWordDefault = function (word) {
+    room.gameState.usedWords.push(word)
+    setGameState('word', word, true)
   }
   this.guess = function (guess = '', userid) {
 
@@ -75,6 +86,11 @@ function Game(_room, updateRooms) {
     // increment round count
     setGameState('round', getGameState('round') + 1, true)
 
+    // if bonus round
+    if (getGameState('round') === 4) {
+      turnWaitTime = 15
+    }
+
     // start pre turn
     preTurnStart()
   }
@@ -92,21 +108,27 @@ function Game(_room, updateRooms) {
     // reset users before timer start
     Object.values(room.usersState).forEach(turnResetUser)
 
-    setTimeout(() => {
-      // if every user had taken a turn, end the round
-      if (!setTurnUser()) {
-        roundEnd()
-        return
-      }
+    // if every user had taken a turn, end the round
+    if (!setTurnUser()) {
+      roundEnd()
+      return
+    }
 
-      setGameState('event', 'pre_turn', true)
+    setGameState('word', '')
+    setGameState('event', 'pre_turn', true)
 
-      // user is selecting a word, start turn after
-      startTimer({
-        seconds: preTurnWaitTime,
-        end: turnStart,
-      })
-    }, 100)
+    // user is selecting a word, start turn after
+    startTimer({
+      seconds: preTurnWaitTime,
+      end: triggerTurnStart,
+    })
+  }
+  function triggerTurnStart() {
+    setGameState('event', 'turn_pre_start', true)
+    startTimer({
+      seconds: 3,
+      end: turnStart,
+    })
   }
   function turnStart() {
     setUserDrawing()
@@ -247,7 +269,6 @@ function Game(_room, updateRooms) {
     updateRooms()
   }
   function noOneGuessed() {
-    console.log(Object.values(room.usersState).every(user => !user.match || user.drawing));
     return Object.values(room.usersState).every(user => !user.match || user.drawing)
   }
 
