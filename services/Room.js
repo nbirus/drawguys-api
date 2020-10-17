@@ -113,7 +113,7 @@ function joinRoom(roomid, socket) {
   }
 
 
-  if (Object.keys(rooms[roomid].usersState).length === 6) {
+  if (Object.keys(rooms[roomid].usersState).length === 20) {
     onSocketError(socket, 'join-room:too-many-players')
     return
   }
