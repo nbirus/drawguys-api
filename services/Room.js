@@ -273,7 +273,8 @@ function roomGuess(guess, socket) {
   }
 
   if (isGameActive(rooms[socket.roomid])) {
-    rooms[socket.roomid].game.guess(guess, socket.userid)
+    let guessed = rooms[socket.roomid].game.guess(guess, socket.userid)
+    socket.emit('guess_result', guessed)
   }
 }
 

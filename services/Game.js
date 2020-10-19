@@ -50,7 +50,7 @@ function Game(_room, updateRooms) {
     if (!room.gameState.word) {
       return
     }
-
+    
     let guessed = guess.toLowerCase() === room.gameState.word.toLowerCase()
 
     // set match
@@ -68,6 +68,8 @@ function Game(_room, updateRooms) {
       cancelTimer()
       turnEnd()
     }
+
+    return guessed
   }
 
   // round
