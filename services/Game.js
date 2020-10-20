@@ -2,8 +2,6 @@ const Countdown = require('../countdown.js')
 const LOG = true
 const _ = require('lodash')
 
-
-
 function Game(_room, updateRooms) {
   let room = _room
   let turnIndex = 0
@@ -13,7 +11,7 @@ function Game(_room, updateRooms) {
   let endGameWaitTime = 5
   let preTurnWaitTime = 5
   let endTurnWaitTime = 5
-  let turnWaitTime = 30
+  let turnWaitTime = 40
 
   this.start = function () {
     log('start')
@@ -298,22 +296,23 @@ function Game(_room, updateRooms) {
   }
   function getScore() {
     let time = room.gameState.timer
-    if (time >= 20) {
-      return 300
-    }
-    else if (time >= 10) {
-      return 200
-    }
-    else if (time >= 5) {
-      return 100
-    }
-    else {
-      return 50
-    }
+			if (time >= 30) {
+				return 400
+			} else if (time >= 20) {
+				return 300
+			} else if (time >= 10) {
+				return 200
+			} else if (time >= 5) {
+				return 100
+			} else if (time > 0) {
+				return 50
+			} else {
+				return 0
+			}
   }
   function getDrawScore() {
     let time = room.gameState.timer
-    if (time >= 20) {
+    if (time >= 30) {
       return 200
     }
     else if (time >= 10) {
