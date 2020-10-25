@@ -84,6 +84,7 @@ function Game(_room, updateRooms) {
     Object.values(room.usersState).forEach(roundResetUser)
 
     // increment round count
+    setGameState('event', 'round_start')
     setGameState('round', getGameState('round') + 1, true)
 
     // if bonus round
@@ -92,7 +93,9 @@ function Game(_room, updateRooms) {
     }
 
     // start pre turn
-    preTurnStart()
+    setTimeout(() => {
+      preTurnStart()
+    }, 50);
   }
   function roundEnd() {
     Object.values(room.usersState).forEach((user) => {
