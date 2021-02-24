@@ -7,9 +7,9 @@ function Game(_room, updateRooms) {
   let turnIndex = 0
 
   // timers
-  let endRoundWaitTime = 5
-  let endGameWaitTime = 5
-  let preTurnWaitTime = 5
+  let endRoundWaitTime = 10
+  let endGameWaitTime = 1
+  let preTurnWaitTime = 7
   let endTurnWaitTime = 5
   let turnWaitTime = 40
 
@@ -68,6 +68,7 @@ function Game(_room, updateRooms) {
     }
 
     return guessed
+
   }
 
   // round
@@ -325,7 +326,6 @@ function Game(_room, updateRooms) {
       return 50
     }
   }
-
 }
 
 module.exports = Game
